@@ -1,0 +1,35 @@
+name: 'gh-cleanup-action'
+description: 'Clean useless Tags, Releases and expired GitHub Actions workflow runs automatically'
+author: 'zhiqiang <zhiqiang2033@gmail.com>'
+inputs:
+  token:
+    description: 'GitHub Token with `repo` scope'
+    required: false
+    default: ${{ github.token }}
+  keep_tag:
+    description: 'Keep latest N tags. Delete older ones if count exceeds this. 0 or empty = skip tags'
+    required: false
+    default: '0'
+  keep_release:
+    description: 'Keep latest N releases. Delete older ones if count exceeds this. 0 or empty = skip releases'
+    required: false
+    default: '0'
+  keep_run:
+    description: 'Keep latest N workflow runs across all workflows. Delete older ones if count exceeds this. 0 or empty = skip workflow runs'
+    required: false
+    default: '0'
+  keep_branch:
+    description: 'Keep latest N non-protected branches. Protected branches are always excluded. 0 or empty = skip branches'
+    required: false
+    default: '0'
+  dry_run:
+    description: 'Preview mode – list what would be deleted without actually deleting'
+    required: false
+    default: 'true'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
+branding:
+  icon: 'trash-2'
+  color: 'red'
