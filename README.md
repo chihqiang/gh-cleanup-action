@@ -65,3 +65,21 @@ npm install
 npm test
 npm run build
 ```
+
+## 本地运行
+
+构建后可通过环境变量传入输入参数，直接执行 `dist/index.js`：
+
+```bash
+GITHUB_REPOSITORY=owner/repo \
+INPUT_TOKEN=ghp_****************** \
+INPUT_KEEP_TAG=1 \
+INPUT_KEEP_RELEASE=1 \
+INPUT_KEEP_RUN=1 \
+INPUT_KEEP_BRANCH=1 \
+INPUT_KEEP_ACTION_CACHE=1 \
+INPUT_DRY_RUN=false \
+node dist/index.js
+```
+
+所有 `INPUT_*` 环境变量对应 `action.yml` 中的输入参数（名称转大写）。`INPUT_DRY_RUN` 默认为 `true`（预览模式），设为 `false` 才会实际执行删除。

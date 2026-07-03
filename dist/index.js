@@ -23668,7 +23668,8 @@ class Config {
     this.keepRun = parseKeep(coreExports.getInput("keep_run"));
     this.keepBranch = parseKeep(coreExports.getInput("keep_branch"));
     this.keepActionCache = parseKeep(coreExports.getInput("keep_action_cache"));
-    this.dryRun = coreExports.getBooleanInput("dry_run");
+    const dryRunInput = coreExports.getInput("dry_run") || "true";
+    this.dryRun = dryRunInput.toLowerCase() === "true";
   }
   validate() {
     if (!this.token) {

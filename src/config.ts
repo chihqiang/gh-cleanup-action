@@ -22,7 +22,8 @@ export class Config {
     this.keepRun = parseKeep(core.getInput('keep_run'));
     this.keepBranch = parseKeep(core.getInput('keep_branch'));
     this.keepActionCache = parseKeep(core.getInput('keep_action_cache'));
-    this.dryRun = core.getBooleanInput('dry_run');
+    const dryRunInput = core.getInput('dry_run') || 'true';
+    this.dryRun = dryRunInput.toLowerCase() === 'true';
   }
 
   validate(): void {
