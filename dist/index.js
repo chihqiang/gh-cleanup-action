@@ -23962,6 +23962,7 @@ var Config = class {
     this.keepRelease = parseKeep(core2.getInput("keep_release"));
     this.keepRun = parseKeep(core2.getInput("keep_run"));
     this.keepBranch = parseKeep(core2.getInput("keep_branch"));
+    this.keepActionCache = parseKeep(core2.getInput("keep_action_cache"));
     this.dryRun = core2.getBooleanInput("dry_run");
   }
   validate() {
@@ -23972,7 +23973,7 @@ var Config = class {
   }
 };
 
-// src/cleaner.ts
+// src/cleaner/base.ts
 var sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 var BaseCleaner = class {
   constructor(octokit, owner, repoName) {
@@ -24021,6 +24022,8 @@ var BaseCleaner = class {
     return results;
   }
 };
+
+// src/cleaner/tag.ts
 var TagCleaner = class extends BaseCleaner {
   async clean(keepLatest, dryRunMode) {
     if (keepLatest <= 0) return 0;
@@ -24061,6 +24064,8 @@ var TagCleaner = class extends BaseCleaner {
     return toDelete.length;
   }
 };
+
+// src/cleaner/release.ts
 var ReleaseCleaner = class extends BaseCleaner {
   async clean(keepLatest, dryRunMode) {
     if (keepLatest <= 0) return 0;
@@ -24101,6 +24106,8 @@ var ReleaseCleaner = class extends BaseCleaner {
     return toDelete.length;
   }
 };
+
+// src/cleaner/workflow-run.ts
 var WorkflowRunCleaner = class extends BaseCleaner {
   async clean(keepLatest, dryRunMode) {
     if (keepLatest <= 0) return 0;
@@ -24143,6 +24150,8 @@ var WorkflowRunCleaner = class extends BaseCleaner {
     return toDelete.length;
   }
 };
+
+// src/cleaner/branch.ts
 var BranchCleaner = class extends BaseCleaner {
   async clean(keepLatest, dryRunMode) {
     if (keepLatest <= 0) return 0;
@@ -24197,6 +24206,55 @@ var BranchCleaner = class extends BaseCleaner {
   }
 };
 
+// src/cleaner/action-cache.ts
+var CacheCleaner = class extends BaseCleaner {
+  async clean(keepLatest, dryRunMode) {
+    if (keepLatest <= 0) return 0;
+    const listCaches = (params) => this.octokit.request("GET /repos/{owner}/{repo}/actions/caches", params);
+    const caches = await this.paginateNested(
+      listCaches,
+      {
+        owner: this.owner,
+        repo: this.repoName,
+        per_page: 100,
+        sort: "created_at",
+        direction: "desc"
+      },
+      "actions_caches"
+    );
+    if (caches.length === 0) {
+      info2("No caches found");
+      return 0;
+    }
+    if (caches.length <= keepLatest) {
+      info2(`Caches (${caches.length}) within keep=${keepLatest} limit, nothing to delete`);
+      return 0;
+    }
+    const toDelete = caches.slice(keepLatest);
+    step(`Caches to delete: ${toDelete.length} (keeping latest ${keepLatest} of ${caches.length})`);
+    for (const cache of toDelete) {
+      if (dryRunMode) {
+        dryRun(`Would delete cache: ${cache.key} (${(cache.size_in_bytes / 1024).toFixed(0)} KB)`);
+      } else {
+        try {
+          await this.withRetry(
+            () => this.octokit.request("DELETE /repos/{owner}/{repo}/actions/caches/{cache_id}", {
+              owner: this.owner,
+              repo: this.repoName,
+              cache_id: cache.id
+            }),
+            `Delete cache ${cache.key}`
+          );
+          success(`Deleted cache: ${cache.key}`);
+        } catch (err) {
+          error2(err.message);
+        }
+      }
+    }
+    return toDelete.length;
+  }
+};
+
 // src/index.ts
 async function main() {
   try {
@@ -24216,13 +24274,17 @@ async function main() {
     if (config.keepBranch > 0) {
       info2(`Branches: keep latest ${config.keepBranch} (protected branches excluded)`);
     }
+    if (config.keepActionCache > 0) {
+      info2(`Caches: keep latest ${config.keepActionCache}`);
+    }
     const { owner, repo: repoName } = github.context.repo;
     const octokit = github.getOctokit(config.token);
     const stats = {
       deletedTags: 0,
       deletedReleases: 0,
       deletedRuns: 0,
-      deletedBranches: 0
+      deletedBranches: 0,
+      deletedActionCaches: 0
     };
     if (config.keepTag > 0) {
       step("Cleaning up tags...");
@@ -24244,16 +24306,22 @@ async function main() {
       const cleaner = new BranchCleaner(octokit, owner, repoName);
       stats.deletedBranches = await cleaner.clean(config.keepBranch, config.dryRun);
     }
+    if (config.keepActionCache > 0) {
+      step("Cleaning up caches...");
+      const cleaner = new CacheCleaner(octokit, owner, repoName);
+      stats.deletedActionCaches = await cleaner.clean(config.keepActionCache, config.dryRun);
+    }
     core3.setOutput("deleted_tags", stats.deletedTags);
     core3.setOutput("deleted_releases", stats.deletedReleases);
     core3.setOutput("deleted_runs", stats.deletedRuns);
     core3.setOutput("deleted_branches", stats.deletedBranches);
-    const total = stats.deletedTags + stats.deletedReleases + stats.deletedRuns + stats.deletedBranches;
+    core3.setOutput("deleted_action_caches", stats.deletedActionCaches);
+    const total = stats.deletedTags + stats.deletedReleases + stats.deletedRuns + stats.deletedBranches + stats.deletedActionCaches;
     if (total === 0) {
       success("Nothing to clean up");
     } else {
       success(
-        `Cleanup complete: ${stats.deletedTags} tag(s), ${stats.deletedReleases} release(s), ${stats.deletedRuns} workflow run(s), ${stats.deletedBranches} branch(es)`
+        `Cleanup complete: ${stats.deletedTags} tag(s), ${stats.deletedReleases} release(s), ${stats.deletedRuns} workflow run(s), ${stats.deletedBranches} branch(es), ${stats.deletedActionCaches} cache(s)`
       );
     }
   } catch (err) {

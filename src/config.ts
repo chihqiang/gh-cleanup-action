@@ -12,6 +12,7 @@ export class Config {
   readonly keepRelease: number;
   readonly keepRun: number;
   readonly keepBranch: number;
+  readonly keepActionCache: number;
   readonly dryRun: boolean;
 
   constructor() {
@@ -20,6 +21,7 @@ export class Config {
     this.keepRelease = parseKeep(core.getInput('keep_release'));
     this.keepRun = parseKeep(core.getInput('keep_run'));
     this.keepBranch = parseKeep(core.getInput('keep_branch'));
+    this.keepActionCache = parseKeep(core.getInput('keep_action_cache'));
     this.dryRun = core.getBooleanInput('dry_run');
   }
 

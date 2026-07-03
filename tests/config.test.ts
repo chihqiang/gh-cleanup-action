@@ -31,6 +31,7 @@ describe('Config', () => {
         keep_release: '5',
         keep_run: '10',
         keep_branch: '2',
+        keep_action_cache: '7',
       };
       return map[name] ?? '';
     });
@@ -42,6 +43,7 @@ describe('Config', () => {
     expect(config.keepRelease).toBe(5);
     expect(config.keepRun).toBe(10);
     expect(config.keepBranch).toBe(2);
+    expect(config.keepActionCache).toBe(7);
     expect(config.dryRun).toBe(false);
   });
 

@@ -2,7 +2,7 @@ import * as core from '@actions/core';
 import * as github from '@actions/github';
 import { info, error, success, step } from './log';
 import { Config } from './config';
-import { CleanupStats, TagCleaner, ReleaseCleaner, WorkflowRunCleaner, BranchCleaner } from './cleaner';
+import { CleanupStats, TagCleaner, ReleaseCleaner, WorkflowRunCleaner, BranchCleaner, CacheCleaner } from './cleaner';
 
 async function main(): Promise<void> {
   try {
@@ -24,6 +24,9 @@ async function main(): Promise<void> {
     if (config.keepBranch > 0) {
       info(`Branches: keep latest ${config.keepBranch} (protected branches excluded)`);
     }
+    if (config.keepActionCache > 0) {
+      info(`Caches: keep latest ${config.keepActionCache}`);
+    }
 
     const { owner, repo: repoName } = github.context.repo;
     const octokit = github.getOctokit(config.token);
@@ -33,6 +36,7 @@ async function main(): Promise<void> {
       deletedReleases: 0,
       deletedRuns: 0,
       deletedBranches: 0,
+      deletedActionCaches: 0,
     };
 
     if (config.keepTag > 0) {
@@ -59,17 +63,25 @@ async function main(): Promise<void> {
       stats.deletedBranches = await cleaner.clean(config.keepBranch, config.dryRun);
     }
 
+    if (config.keepActionCache > 0) {
+      step('Cleaning up caches...');
+      const cleaner = new CacheCleaner(octokit, owner, repoName);
+      stats.deletedActionCaches = await cleaner.clean(config.keepActionCache, config.dryRun);
+    }
+
     core.setOutput('deleted_tags', stats.deletedTags);
     core.setOutput('deleted_releases', stats.deletedReleases);
     core.setOutput('deleted_runs', stats.deletedRuns);
     core.setOutput('deleted_branches', stats.deletedBranches);
+    core.setOutput('deleted_action_caches', stats.deletedActionCaches);
 
-    const total = stats.deletedTags + stats.deletedReleases + stats.deletedRuns + stats.deletedBranches;
+    const total =
+      stats.deletedTags + stats.deletedReleases + stats.deletedRuns + stats.deletedBranches + stats.deletedActionCaches;
     if (total === 0) {
       success('Nothing to clean up');
     } else {
       success(
-        `Cleanup complete: ${stats.deletedTags} tag(s), ${stats.deletedReleases} release(s), ${stats.deletedRuns} workflow run(s), ${stats.deletedBranches} branch(es)`,
+        `Cleanup complete: ${stats.deletedTags} tag(s), ${stats.deletedReleases} release(s), ${stats.deletedRuns} workflow run(s), ${stats.deletedBranches} branch(es), ${stats.deletedActionCaches} cache(s)`,
       );
     }
   } catch (err) {
