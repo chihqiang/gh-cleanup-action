@@ -90,6 +90,9 @@ describe('CacheCleaner', () => {
     const count = await cleaner.clean(1, true);
     expect(count).toBe(1);
     expect(request).toHaveBeenCalledTimes(1);
-    expect(request).not.toHaveBeenCalledWith('DELETE /repos/{owner}/{repo}/actions/caches/{cache_id}', expect.anything());
+    expect(request).not.toHaveBeenCalledWith(
+      'DELETE /repos/{owner}/{repo}/actions/caches/{cache_id}',
+      expect.anything(),
+    );
   });
 });
