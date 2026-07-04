@@ -23967,7 +23967,7 @@ async function main() {
       info(`Branches: keep latest ${config.keepBranch} (protected branches excluded)`);
     }
     if (config.keepActionCache > 0) {
-      info(`Caches: keep latest ${config.keepActionCache}`);
+      info(`Action Caches: keep latest ${config.keepActionCache}`);
     }
     const { owner, repo: repoName } = githubExports.context.repo;
     const octokit = githubExports.getOctokit(config.token);
@@ -23999,7 +23999,7 @@ async function main() {
       stats.deletedBranches = await cleaner.clean(config.keepBranch, config.dryRun);
     }
     if (config.keepActionCache > 0) {
-      step("Cleaning up caches...");
+      step("Cleaning up action caches...");
       const cleaner = new CacheCleaner(octokit, owner, repoName);
       stats.deletedActionCaches = await cleaner.clean(config.keepActionCache, config.dryRun);
     }
@@ -24013,7 +24013,7 @@ async function main() {
       success("Nothing to clean up");
     } else {
       success(
-        `Cleanup complete: ${stats.deletedTags} tag(s), ${stats.deletedReleases} release(s), ${stats.deletedRuns} workflow run(s), ${stats.deletedBranches} branch(es), ${stats.deletedActionCaches} cache(s)`
+        `Cleanup complete: ${stats.deletedTags} tag(s), ${stats.deletedReleases} release(s), ${stats.deletedRuns} workflow run(s), ${stats.deletedBranches} branch(es), ${stats.deletedActionCaches} action cache(s)`
       );
     }
   } catch (err) {
